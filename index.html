@@ -48,6 +48,16 @@
   .check{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text)}
   .check input{width:18px;height:18px}
   .msg{font-size:13px;color:var(--good);min-height:18px;margin-top:8px}
+  input[type=text]{width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:15px}
+  .food-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  @media (max-width:480px){ .food-grid{grid-template-columns:1fr} }
+  .food-btn{text-align:left;line-height:1.35}
+  .food-btn .fname{font-weight:600;display:block}
+  .food-btn .fmeta{font-size:12px;color:var(--muted)}
+  .result{padding:9px 0;border-bottom:1px solid var(--border);cursor:pointer}
+  .result:last-child{border-bottom:none}
+  .result .rname{font-weight:600;font-size:14px}
+  .result .rmeta{font-size:12px;color:var(--muted)}
   footer{font-size:12px;color:var(--muted);line-height:1.5;margin-top:20px}
   a{color:var(--accent)}
 </style>
@@ -61,6 +71,25 @@
     <h2>Today</h2>
     <div class="big" id="todayRemaining">—</div>
     <div class="small" id="todayDetail"></div>
+  </div>
+
+  <div class="card">
+    <h2>Find a food</h2>
+    <div class="small">Don't know the numbers? Pick a common food, or search packaged foods. Either way the calories and protein are filled into the Log food form below — check them, set how much you had, then tap Add to day.</div>
+
+    <label for="qServings" style="margin-top:12px">Servings (for quick-add and search picks)</label>
+    <input type="number" id="qServings" min="0" step="0.5" value="1" inputmode="decimal" style="max-width:120px">
+
+    <div class="food-grid" id="foodGrid"></div>
+
+    <label for="sQuery" style="margin-top:14px">Search packaged foods (Open Food Facts — needs internet)</label>
+    <div class="row">
+      <div style="flex:3"><input type="text" id="sQuery" placeholder="e.g. Greek yogurt, Cheetos, protein bar"></div>
+      <div style="flex:1"><button class="primary" id="btnSearch" style="width:100%">Search</button></div>
+    </div>
+    <div class="msg" id="searchMsg"></div>
+    <div id="searchResults"></div>
+    <div class="small" style="margin-top:6px">Search results come from the free Open Food Facts database, shared by its contributors. Values are per serving when the product lists one, otherwise per 100 g — the result says which.</div>
   </div>
 
   <div class="card">
@@ -262,6 +291,96 @@ function showMsg(text){
   document.getElementById("formMsg").textContent = text;
   setTimeout(function(){ document.getElementById("formMsg").textContent=""; }, 4000);
 }
+
+var FOODS = [
+  {name:"Egg, large", serving:"1 egg", cal:70, pro:6},
+  {name:"Bacon, thick-cut", serving:"1 strip", cal:80, pro:3},
+  {name:"Bacon, regular", serving:"1 strip", cal:45, pro:3},
+  {name:"American cheese", serving:"1 slice", cal:65, pro:4},
+  {name:"Cheddar cheese", serving:"1 oz", cal:115, pro:7},
+  {name:"Chicken breast, cooked", serving:"4 oz", cal:185, pro:35},
+  {name:"Ground beef 80/20, cooked", serving:"4 oz", cal:280, pro:26},
+  {name:"Tuna in water, drained", serving:"1 can", cal:95, pro:20},
+  {name:"White rice, cooked", serving:"1 cup", cal:205, pro:4},
+  {name:"Oatmeal, flavored packet", serving:"1 packet", cal:190, pro:10},
+  {name:"Whey protein shake", serving:"1 scoop", cal:120, pro:25},
+  {name:"Greek yogurt, nonfat", serving:"1 cup", cal:100, pro:18},
+  {name:"Whole milk", serving:"1 cup", cal:150, pro:8},
+  {name:"Peanut butter", serving:"2 tbsp", cal:190, pro:8},
+  {name:"Bread", serving:"1 slice", cal:80, pro:3},
+  {name:"Banana, medium", serving:"1 banana", cal:105, pro:1},
+  {name:"Apple, medium", serving:"1 apple", cal:95, pro:0},
+  {name:"Mixed fruit cup", serving:"1 cup", cal:70, pro:1},
+  {name:"Popcorn, microwave", serving:"1 bag", cal:450, pro:6},
+  {name:"Chicken enchilada", serving:"1 enchilada", cal:320, pro:18},
+  {name:"Coffee, black", serving:"1 cup", cal:5, pro:0},
+  {name:"Orange juice", serving:"1 cup", cal:110, pro:2}
+];
+
+function servingsVal(){
+  var v = parseFloat(document.getElementById("qServings").value);
+  return (isNaN(v) || v <= 0) ? 1 : v;
+}
+function fillForm(cal, pro, labelText){
+  var s = servingsVal();
+  document.getElementById("fCal").value = Math.round(cal * s);
+  document.getElementById("fPro").value = Math.round(pro * s);
+  showMsg(labelText + " × " + s + " serving" + (s===1?"":"s") + " filled in below — tap Add to day to log it.");
+  document.getElementById("fCal").scrollIntoView({behavior:"smooth", block:"center"});
+}
+
+var grid = document.getElementById("foodGrid");
+FOODS.forEach(function(f){
+  var b = document.createElement("button");
+  b.className = "food-btn";
+  var n = document.createElement("span"); n.className="fname"; n.textContent = f.name;
+  var m = document.createElement("span"); m.className="fmeta";
+  m.textContent = f.serving + " · " + f.cal + " kcal · " + f.pro + " g protein";
+  b.appendChild(n); b.appendChild(m);
+  b.addEventListener("click", function(){ fillForm(f.cal, f.pro, f.name + " (" + f.serving + ")"); });
+  grid.appendChild(b);
+});
+
+function searchMsg(text){
+  document.getElementById("searchMsg").textContent = text;
+}
+document.getElementById("btnSearch").addEventListener("click", function(){
+  var q = document.getElementById("sQuery").value.trim();
+  var box = document.getElementById("searchResults");
+  box.innerHTML = "";
+  if(!q){ searchMsg("Type a food name first."); return; }
+  searchMsg("Searching Open Food Facts…");
+  var url = "https://world.openfoodfacts.org/cgi/search.pl?search_terms=" + encodeURIComponent(q) +
+    "&search_simple=1&action=process&json=1&page_size=12&fields=product_name,brands,nutriments,serving_size";
+  fetch(url).then(function(r){ return r.json(); }).then(function(data){
+    var products = (data.products || []).filter(function(p){
+      var n = p.nutriments || {};
+      return p.product_name && (n["energy-kcal_serving"] != null || n["energy-kcal_100g"] != null);
+    }).slice(0, 8);
+    if(!products.length){ searchMsg("No results with nutrition data for “" + q + "”. Try a different name, or use the quick-add list."); return; }
+    searchMsg(products.length + " result" + (products.length===1?"":"s") + " — tap one to fill the form:");
+    products.forEach(function(p){
+      var n = p.nutriments || {};
+      var perServing = n["energy-kcal_serving"] != null;
+      var cal = perServing ? n["energy-kcal_serving"] : n["energy-kcal_100g"];
+      var pro = perServing ? (n["proteins_serving"] || 0) : (n["proteins_100g"] || 0);
+      var basis = perServing ? ("per serving" + (p.serving_size ? " (" + p.serving_size + ")" : "")) : "per 100 g";
+      var row = document.createElement("div"); row.className = "result";
+      var rn = document.createElement("div"); rn.className = "rname";
+      rn.textContent = p.product_name + (p.brands ? " — " + String(p.brands).split(",")[0] : "");
+      var rm = document.createElement("div"); rm.className = "rmeta";
+      rm.textContent = Math.round(cal) + " kcal · " + Math.round(pro) + " g protein · " + basis;
+      row.appendChild(rn); row.appendChild(rm);
+      row.addEventListener("click", function(){ fillForm(cal, pro, p.product_name + " (" + basis + ")"); });
+      box.appendChild(row);
+    });
+  }).catch(function(){
+    searchMsg("Search failed — check your internet connection, or use the quick-add list above.");
+  });
+});
+document.getElementById("sQuery").addEventListener("keydown", function(ev){
+  if(ev.key === "Enter"){ ev.preventDefault(); document.getElementById("btnSearch").click(); }
+});
 
 document.getElementById("btnAdd").addEventListener("click", function(){
   var f = readForm(); if(!f){ showMsg("Enter calories and/or protein first."); return; }

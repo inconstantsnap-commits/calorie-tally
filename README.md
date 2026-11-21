@@ -7,6 +7,7 @@ A simple daily calorie and protein tally with charts against targets you set you
 ## How it works
 
 - Open the page, set your own daily calorie and protein targets, and log what you eat and drink.
+- Don't know the numbers? Use **Find a food**: a built-in quick-add list of common foods with standard estimates per serving, or search packaged foods in the free [Open Food Facts](https://world.openfoodfacts.org/) database (needs internet). Picking a food fills the calories and protein into the log form — set your servings first, then log it.
 - "Add to day" adds a meal onto that date's totals; "Set day total instead" replaces them.
 - Charts show your last 7 days against your target lines. Grey bars are days still in progress.
 - A week summary shows your 7-day totals and your average per logged day.
