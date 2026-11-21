@@ -4,6 +4,8 @@ A simple daily calorie and protein tally with charts against targets you set you
 
 **Live:** https://inconstantsnap-commits.github.io/calorie-tally/
 
+**Android APK:** download `calorie-tally.apk` from the [apk-latest release](https://github.com/inconstantsnap-commits/calorie-tally/releases/tag/apk-latest), open it on your Android phone, and allow installing from your browser/files app when asked. It is the same app, wrapped for Android; your data stays on your phone. The APK is rebuilt and replaced on that release whenever the app updates.
+
 ## How it works
 
 - Open the page, set your own daily calorie and protein targets, and log what you eat and drink.
