@@ -1,0 +1,1 @@
+{"dependencies":{"@capacitor/android":"^6.1.2","@capacitor/core":"^6.1.2"},"description":"Calorie Tally — daily calorie and protein tally app (Android build via Capacitor).","devDependencies":{"@capacitor/cli":"^6.1.2"},"name":"calorie-tally","private":true,"version":"1.0.0"}
