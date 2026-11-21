@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calorie Tally</title>
+<meta name="description" content="A simple daily calorie and protein tally with charts against your own targets. Your data stays on your device.">
+<style>
+  :root{
+    --bg:#f6f7f9; --surface:#ffffff; --surface2:#eef1f4; --text:#17202a; --muted:#5d6d7e;
+    --border:#d5dbdb; --accent:#6c3483; --accent2:#a569bd; --good:#1e8449; --warn:#b7950b;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#14181d; --surface:#1d232b; --surface2:#262e38; --text:#ecf0f1; --muted:#aeb6bf; --border:#39424e; --accent:#bb8fce; --accent2:#8e44ad; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text)}
+  .wrap{max-width:680px;margin:0 auto;padding:16px 14px 48px}
+  h1{font-size:24px;margin:8px 0 2px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px}
+  .card h2{font-size:15px;margin:0 0 10px}
+  .big{font-size:20px;font-weight:700}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row > *{flex:1;min-width:120px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+  input[type=number],input[type=date]{width:100%;padding:9px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:15px}
+  button{padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:14px;cursor:pointer}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  @media (prefers-color-scheme: dark){ button.primary{color:#14181d} }
+  button.danger{color:#c0392b}
+  .chart{position:relative;height:150px;border-bottom:1px solid var(--border);margin-top:6px}
+  .target-line{position:absolute;left:0;right:0;border-top:2px dashed var(--accent)}
+  .target-label{position:absolute;right:0;font-size:10px;color:var(--accent);transform:translateY(-100%)}
+  .bars{display:flex;align-items:flex-end;height:100%;gap:6px;padding:0 2px}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
+  .bar-val{font-size:10px;margin-bottom:3px;white-space:nowrap}
+  .bar{width:100%;max-width:44px;background:var(--accent2);border-radius:4px 4px 0 0;min-height:2px}
+  .bar.partial{background:var(--muted);opacity:.6}
+  .bar.empty{background:transparent}
+  .labels{display:flex;gap:6px;font-size:11px;color:var(--muted);text-align:center;padding:4px 2px 0}
+  .labels div{flex:1}
+  .day{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
+  .day:last-child{border-bottom:none}
+  .day .meta{font-size:13px;color:var(--muted)}
+  .day .vals{font-weight:600;font-size:14px}
+  .small{font-size:12px;color:var(--muted)}
+  .check{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--text)}
+  .check input{width:18px;height:18px}
+  .msg{font-size:13px;color:var(--good);min-height:18px;margin-top:8px}
+  footer{font-size:12px;color:var(--muted);line-height:1.5;margin-top:20px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Calorie Tally</h1>
+  <div class="sub">Track daily calories and protein against targets you set yourself. Everything is stored only on this device — no account, no server.</div>
+
+  <div class="card" id="todayCard">
+    <h2>Today</h2>
+    <div class="big" id="todayRemaining">—</div>
+    <div class="small" id="todayDetail"></div>
+  </div>
+
+  <div class="card">
+    <h2>Log food</h2>
+    <div class="row">
+      <div><label for="fDate">Date</label><input type="date" id="fDate"></div>
+      <div><label for="fCal">Calories (kcal)</label><input type="number" id="fCal" min="0" max="20000" inputmode="numeric" placeholder="e.g. 650"></div>
+      <div><label for="fPro">Protein (g)</label><input type="number" id="fPro" min="0" max="2000" inputmode="numeric" placeholder="e.g. 45"></div>
+    </div>
+    <div class="row" style="margin-top:10px;align-items:center">
+      <label class="check"><input type="checkbox" id="fPartial" checked> Day not finished yet</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="primary" id="btnAdd">Add to day</button>
+      <button id="btnSet">Set day total instead</button>
+    </div>
+    <div class="msg" id="formMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Calories — last 7 days</h2>
+    <div class="chart" id="calChart"></div>
+    <div class="labels" id="calLabels"></div>
+    <h2 style="margin-top:18px">Protein (g) — last 7 days</h2>
+    <div class="chart" id="proChart"></div>
+    <div class="labels" id="proLabels"></div>
+    <div class="small" style="margin-top:10px" id="weekSummary"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your days</h2>
+    <div id="dayList"></div>
+    <div class="small" id="noDays">Nothing logged yet. Add your first meal above.</div>
+  </div>
+
+  <div class="card">
+    <h2>Your targets</h2>
+    <div class="row">
+      <div><label for="tCal">Daily calories (kcal)</label><input type="number" id="tCal" min="0" max="20000" inputmode="numeric"></div>
+      <div><label for="tPro">Daily protein (g)</label><input type="number" id="tPro" min="0" max="2000" inputmode="numeric"></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="primary" id="btnTargets">Save targets</button></div>
+    <div class="msg" id="targetMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your data</h2>
+    <div class="row">
+      <button id="btnExport">Export JSON</button>
+      <button id="btnImport">Import JSON</button>
+      <button class="danger" id="btnClear">Clear all data</button>
+    </div>
+    <input type="file" id="fileImport" accept="application/json" style="display:none">
+    <div class="small" style="margin-top:8px">Export saves a backup file you can import on another device. Clearing removes everything stored on this device.</div>
+  </div>
+
+  <footer>
+    Calorie Tally is a simple personal tally tool. All figures are estimates unless you enter a label value yourself; this app does not give medical or dietary advice. Talk to a qualified professional for guidance about your own nutrition.<br><br>
+    Created by Zachary Furr. Freely given — use it, share it.
+  </footer>
+</div>
+
+<script>
+"use strict";
+var KEY = "calorieTallyPublic.v1";
+var state = load();
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(raw){ var s = JSON.parse(raw); if(s && s.days && s.targets) return s; }
+  }catch(e){}
+  return { targets:{cal:2500, pro:150}, days:{} };
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+function todayStr(d){
+  d = d || new Date();
+  var m = String(d.getMonth()+1).padStart(2,"0");
+  var day = String(d.getDate()).padStart(2,"0");
+  return d.getFullYear()+"-"+m+"-"+day;
+}
+function last7(){
+  var out = [];
+  for(var i=6;i>=0;i--){
+    var d = new Date(); d.setDate(d.getDate()-i);
+    out.push(todayStr(d));
+  }
+  return out;
+}
+function fmt(n){ return Math.round(n).toLocaleString("en-US"); }
+function dayLabel(ds){
+  var d = new Date(ds+"T12:00:00");
+  return d.toLocaleDateString("en-US",{weekday:"short"})+" "+d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+}
+
+function render(){
+  var t = todayStr();
+  var td = state.days[t] || {cal:0, pro:0, partial:true};
+  var calLeft = state.targets.cal - td.cal;
+  var proLeft = state.targets.pro - td.pro;
+  document.getElementById("todayRemaining").textContent =
+    fmt(Math.max(calLeft,0)) + " kcal and " + fmt(Math.max(proLeft,0)) + " g protein left today";
+  document.getElementById("todayDetail").textContent =
+    "So far: " + fmt(td.cal) + " kcal / " + fmt(td.pro) + " g protein of " +
+    fmt(state.targets.cal) + " kcal / " + fmt(state.targets.pro) + " g targets" +
+    (td.cal===0 && !state.days[t] ? " — nothing logged yet today." : (td.partial ? " — day in progress." : " — day marked complete."));
+
+  renderChart("calChart","calLabels","cal");
+  renderChart("proChart","proLabels","pro");
+
+  var dates = last7();
+  var totalCal=0,totalPro=0,logged=0;
+  dates.forEach(function(ds){
+    var d = state.days[ds];
+    if(d){ totalCal+=d.cal; totalPro+=d.pro; logged++; }
+  });
+  document.getElementById("weekSummary").textContent = logged ?
+    "Last 7 days: " + fmt(totalCal) + " kcal / " + fmt(totalPro) + " g protein over " + logged +
+    " logged day" + (logged===1?"":"s") + " — average " + fmt(totalCal/logged) + " kcal / " + fmt(totalPro/logged) + " g per logged day." :
+    "Last 7 days: nothing logged yet.";
+
+  var list = document.getElementById("dayList");
+  list.innerHTML = "";
+  var keys = Object.keys(state.days).sort().reverse();
+  document.getElementById("noDays").style.display = keys.length ? "none" : "block";
+  keys.slice(0,31).forEach(function(ds){
+    var d = state.days[ds];
+    var row = document.createElement("div"); row.className="day";
+    var left = document.createElement("div");
+    left.innerHTML = "";
+    var v = document.createElement("div"); v.className="vals"; v.textContent = fmt(d.cal)+" kcal · "+fmt(d.pro)+" g protein";
+    var m = document.createElement("div"); m.className="meta"; m.textContent = dayLabel(ds) + (d.partial ? " · in progress" : " · complete");
+    left.appendChild(v); left.appendChild(m);
+    var del = document.createElement("button"); del.className="danger"; del.textContent="Delete";
+    del.addEventListener("click", function(){
+      if(confirm("Delete " + dayLabel(ds) + "?")){ delete state.days[ds]; save(); render(); }
+    });
+    row.appendChild(left); row.appendChild(del);
+    list.appendChild(row);
+  });
+
+  document.getElementById("tCal").value = state.targets.cal;
+  document.getElementById("tPro").value = state.targets.pro;
+}
+
+function renderChart(chartId,labelId,kind){
+  var dates = last7();
+  var target = kind==="cal" ? state.targets.cal : state.targets.pro;
+  var scaleMax = target * 1.15;
+  dates.forEach(function(ds){
+    var d = state.days[ds];
+    if(d){ var v = kind==="cal" ? d.cal : d.pro; if(v > scaleMax) scaleMax = v * 1.05; }
+  });
+  var chart = document.getElementById(chartId);
+  chart.innerHTML = "";
+  var line = document.createElement("div"); line.className="target-line";
+  line.style.bottom = (target/scaleMax*100) + "%";
+  var lab = document.createElement("div"); lab.className="target-label";
+  lab.style.bottom = (target/scaleMax*100) + "%";
+  lab.textContent = "target " + fmt(target);
+  chart.appendChild(line); chart.appendChild(lab);
+  var bars = document.createElement("div"); bars.className="bars";
+  dates.forEach(function(ds){
+    var d = state.days[ds];
+    var col = document.createElement("div"); col.className="bar-col";
+    var val = document.createElement("div"); val.className="bar-val";
+    var bar = document.createElement("div"); bar.className="bar";
+    if(!d){ val.textContent=""; bar.className="bar empty"; bar.style.height="2px"; }
+    else{
+      var v = kind==="cal" ? d.cal : d.pro;
+      val.textContent = fmt(v);
+      bar.style.height = Math.max(v/scaleMax*100, 1.5) + "%";
+      if(d.partial) bar.className="bar partial";
+    }
+    col.appendChild(val); col.appendChild(bar);
+    bars.appendChild(col);
+  });
+  chart.appendChild(bars);
+  var labels = document.getElementById(labelId);
+  labels.innerHTML = "";
+  dates.forEach(function(ds){
+    var el = document.createElement("div");
+    var d = new Date(ds+"T12:00:00");
+    el.textContent = d.toLocaleDateString("en-US",{weekday:"short"}) + " " + d.getDate();
+    labels.appendChild(el);
+  });
+}
+
+function readForm(){
+  var ds = document.getElementById("fDate").value || todayStr();
+  var cal = parseInt(document.getElementById("fCal").value,10);
+  var pro = parseInt(document.getElementById("fPro").value,10);
+  if(isNaN(cal) && isNaN(pro)) return null;
+  return { date:ds, cal:isNaN(cal)?0:cal, pro:isNaN(pro)?0:pro,
+           partial:document.getElementById("fPartial").checked };
+}
+function showMsg(text){
+  document.getElementById("formMsg").textContent = text;
+  setTimeout(function(){ document.getElementById("formMsg").textContent=""; }, 4000);
+}
+
+document.getElementById("btnAdd").addEventListener("click", function(){
+  var f = readForm(); if(!f){ showMsg("Enter calories and/or protein first."); return; }
+  var d = state.days[f.date] || {cal:0, pro:0, partial:true};
+  d.cal += f.cal; d.pro += f.pro; d.partial = f.partial;
+  state.days[f.date] = d; save(); render();
+  showMsg("Added — " + dayLabel(f.date) + " is now " + fmt(d.cal) + " kcal / " + fmt(d.pro) + " g.");
+});
+document.getElementById("btnSet").addEventListener("click", function(){
+  var f = readForm(); if(!f){ showMsg("Enter calories and/or protein first."); return; }
+  state.days[f.date] = {cal:f.cal, pro:f.pro, partial:f.partial};
+  save(); render();
+  showMsg("Set — " + dayLabel(f.date) + " is " + fmt(f.cal) + " kcal / " + fmt(f.pro) + " g.");
+});
+document.getElementById("btnTargets").addEventListener("click", function(){
+  var c = parseInt(document.getElementById("tCal").value,10);
+  var p = parseInt(document.getElementById("tPro").value,10);
+  if(!isNaN(c) && c>0) state.targets.cal = c;
+  if(!isNaN(p) && p>0) state.targets.pro = p;
+  save(); render();
+  document.getElementById("targetMsg").textContent = "Targets saved.";
+  setTimeout(function(){ document.getElementById("targetMsg").textContent=""; }, 3000);
+});
+document.getElementById("btnExport").addEventListener("click", function(){
+  var blob = new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "calorie-tally-export.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById("btnImport").addEventListener("click", function(){
+  document.getElementById("fileImport").click();
+});
+document.getElementById("fileImport").addEventListener("change", function(ev){
+  var file = ev.target.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var s = JSON.parse(reader.result);
+      if(s && s.days && s.targets){ state = s; save(); render(); showMsg("Import done."); }
+      else showMsg("That file does not look like a Calorie Tally export.");
+    }catch(e){ showMsg("Could not read that file."); }
+  };
+  reader.readAsText(file);
+});
+document.getElementById("btnClear").addEventListener("click", function(){
+  if(confirm("Clear all Calorie Tally data on this device?")){
+    state = { targets: state.targets, days:{} }; save(); render();
+  }
+});
+
+document.getElementById("fDate").value = todayStr();
+render();
+</script>
+</body>
+</html>
